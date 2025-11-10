@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useState, useMemo, useEffect } from "react";
 import {
   ThemeProvider,
@@ -39,30 +38,19 @@ import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
 import AddIcon from "@mui/icons-material/Add";
 
-// --- Типи даних ---
-
-/**
- * Трикутне нечітке число (l, m, u)
- */
 type TriangularNumber = {
-  l: number; // lower
-  m: number; // middle
-  u: number; // upper
+  l: number; 
+  m: number; 
+  u: number; 
 };
 
-/**
- * Лінгвістичний терм (для дропдавнів)
- */
 type LinguisticTerm = {
-  id: string; // Додано для стабільного рендерингу
+  id: string; 
   name: string;
   shortName: string;
   tri: TriangularNumber;
 };
 
-/**
- * Структура для зберігання результатів ранжування
- */
 type RankedAlternative = {
   altIndex: number;
   altLabel: string;
@@ -71,9 +59,6 @@ type RankedAlternative = {
   q: number;
 };
 
-/**
- * Структура для збереження всіх результатів VIKOR
- */
 type CalculationResults = {
   step2_criteria: TriangularNumber[];
   step2_alternatives: TriangularNumber[][];
@@ -96,9 +81,6 @@ type CalculationResults = {
   step9_compromiseSet: string[];
 };
 
-// --- Константи (з Таблиць 1, 2 у документі) ---
-// ПЕРЕТВОРЕНО НА ПОЧАТКОВИЙ СТАН
-
 const INITIAL_CRITERIA_TERMS: LinguisticTerm[] = [
   { id: "c1", name: "Very Low (VL)", shortName: "VL", tri: { l: 0.0, m: 0.1, u: 0.3 } },
   { id: "c2", name: "Low (L)", shortName: "L", tri: { l: 0.1, m: 0.3, u: 0.5 } },
@@ -116,7 +98,6 @@ const INITIAL_ALTERNATIVE_TERMS: LinguisticTerm[] = [
   { id: "a6", name: "Excellent (E)", shortName: "E", tri: { l: 0.8, m: 0.9, u: 1.0 } },
 ];
 
-// Тема MUI (залишаємо як було)
 const theme = createTheme({
   palette: {
     mode: "light",
@@ -177,13 +158,8 @@ const theme = createTheme({
   },
 });
 
-// --- Допоміжні функції Fuzzy ---
-
 const T_ZERO: TriangularNumber = { l: 0, m: 0, u: 0 };
 
-/**
- * Додавання: (a,b,c) + (d,e,f) = (a+d, b+e, c+f)
- */
 const triAdd = (
   t1: TriangularNumber,
   t2: TriangularNumber
@@ -193,9 +169,6 @@ const triAdd = (
   u: t1.u + t2.u,
 });
 
-/**
- * Віднімання: (a,b,c) - (d,e,f) = (a-f, b-e, c-d)
- */
 const triSubtract = (
   t1: TriangularNumber,
   t2: TriangularNumber
@@ -205,9 +178,6 @@ const triSubtract = (
   u: t1.u - t2.l,
 });
 
-/**
- * Множення: (a,b,c) * (d,e,f) = (a*d, b*e, c*f)
- */
 const triMultiply = (
   t1: TriangularNumber,
   t2: TriangularNumber
@@ -217,9 +187,6 @@ const triMultiply = (
   u: t1.u * t2.u,
 });
 
-/**
- * Множення на скаляр: (a,b,c) * k = (a*k, b*k, c*k)
- */
 const triMultiplyByScalar = (
   t: TriangularNumber,
   s: number
@@ -229,15 +196,11 @@ const triMultiplyByScalar = (
   u: t.u * s,
 });
 
-/**
- * Ділення на скаляр: (a,b,c) / k = (a/k, b/k, c/k)
- */
 const triDivideByScalar = (
   t: TriangularNumber,
   s: number
 ): TriangularNumber => {
   if (s === 0) {
-    // console.warn("Fuzzy division by zero. Returning zero.");
     return T_ZERO;
   }
   return {
@@ -247,9 +210,6 @@ const triDivideByScalar = (
   };
 };
 
-/**
- * Компонентний максимум: MAX((a,b,c), (d,e,f)) = (max(a,d), max(b,e), max(c,f))
- */
 const triMax = (
   t1: TriangularNumber,
   t2: TriangularNumber
@@ -259,9 +219,6 @@ const triMax = (
   u: Math.max(t1.u, t2.u),
 });
 
-/**
- * Компонентний мінімум: MIN((a,b,c), (d,e,f)) = (min(a,d), min(b,e), min(c,f))
- */
 const triMin = (
   t1: TriangularNumber,
   t2: TriangularNumber
@@ -271,35 +228,21 @@ const triMin = (
   u: Math.min(t1.u, t2.u),
 });
 
-/**
- * Крок 7: Дефазифікація за формулою (l + 2m + u) / 4
- */
 const defuzzify = (t: TriangularNumber): number => {
   return (t.l + 2 * t.m + t.u) / 4;
 };
 
-/**
- * Транспонування матриці (rows -> cols)
- */
-const transpose = (matrix: any[][]): any[][] => {
-  if (!matrix || matrix.length === 0 || matrix[0].length === 0) {
-    return [];
-  }
-  return matrix[0].map((_, c) => matrix.map((r) => r[c]));
-};
+// const transpose = (matrix: any[][]): any[][] => {
+//   if (!matrix || matrix.length === 0 || matrix[0].length === 0) {
+//     return [];
+//   }
+//   return matrix[0].map((_, c) => matrix.map((r) => r[c]));
+// };
 
-// --- Допоміжні функції ---
-
-/**
- * Ініціалізація 2D-масиву
- */
 function create2DArray<T>(rows: number, cols: number, fill: T): T[][] {
   return Array.from({ length: rows }, () => Array(cols).fill(fill));
 }
 
-/**
- * Ініціалізація 3D-масиву
- */
 function create3DArray<T>(
   d1: number,
   d2: number,
@@ -309,9 +252,6 @@ function create3DArray<T>(
   return Array.from({ length: d1 }, () => create2DArray(d2, d3, fill));
 }
 
-/**
- * "Розумна" функція для зміни розміру масиву назв
- */
 const resizeLabels = (
   prevLabels: string[],
   newCount: number,
@@ -323,9 +263,6 @@ const resizeLabels = (
   return newLabels;
 };
 
-/**
- * "Розумна" функція для зміни розміру 2D-масиву
- */
 const resize2DArray = <T,>(
   prevArray: T[][],
   newRows: number,
@@ -343,9 +280,6 @@ const resize2DArray = <T,>(
   return newArray;
 };
 
-/**
- * "Розумна" функція для зміни розміру 3D-масиву
- */
 const resize3DArray = <T,>(
   prevArray: T[][][],
   d1: number,
@@ -367,9 +301,6 @@ const resize3DArray = <T,>(
   return newArray;
 };
 
-/**
- * Компонент для вкладки з результатами
- */
 interface TabPanelProps {
   children?: React.ReactNode;
   index: number;
@@ -392,9 +323,6 @@ function CustomTabPanel(props: TabPanelProps) {
   );
 }
 
-/**
- * Компонент для форматованого відображення 3-компонентного числа
- */
 const TriangularNumberCell: React.FC<{
   t: TriangularNumber;
   precision?: number;
@@ -404,8 +332,6 @@ const TriangularNumberCell: React.FC<{
     ]
   </TableCell>
 );
-
-// --- Компонент Редактора Термів ---
 
 type TermErrors = {
   name?: string;
@@ -435,7 +361,6 @@ const LinguisticTermEditor: React.FC<LinguisticTermEditorProps> = ({
   );
   const [errors, setErrors] = useState<Record<string, TermErrors>>({});
 
-  // Скидання стану при відкритті
   useEffect(() => {
     if (open) {
       setTerms(JSON.parse(JSON.stringify(initialTerms)));
@@ -448,9 +373,7 @@ const LinguisticTermEditor: React.FC<LinguisticTermEditorProps> = ({
     let isValid = true;
     
     if (currentTerms.length < 2) {
-      // Глобальна помилка, але ми покажемо її на кнопці
       isValid = false;
-      // Можна додати глобальний стан помилки, якщо потрібно
     }
 
     const shortNames = new Set<string>();
@@ -500,7 +423,6 @@ const LinguisticTermEditor: React.FC<LinguisticTermEditorProps> = ({
       return;
     }
 
-    // Нормалізація
     const maxU = Math.max(...terms.map((t: LinguisticTerm) => t.tri.u));
     let normalizedTerms = terms;
 
@@ -672,20 +594,15 @@ const LinguisticTermEditor: React.FC<LinguisticTermEditorProps> = ({
   );
 };
 
-// --- Головний компонент App ---
-
 function App() {
-  // --- Стани ---
   const [page, setPage] = useState<"setup" | "results">("setup");
   const [resultPage, setResultPage] = useState(0);
 
-  // Налаштування
-  const [numAlternatives, setNumAlternatives] = useState(5); // з прикладу
-  const [numCriteria, setNumCriteria] = useState(4); // з прикладу
-  const [numExperts, setNumExperts] = useState(3); // з прикладу
-  const [v, setV] = useState(0.5); // Вага стратегії "max group utility"
+  const [numAlternatives, setNumAlternatives] = useState(8);
+  const [numCriteria, setNumCriteria] = useState(6);
+  const [numExperts, setNumExperts] = useState(4);
+  const [v, setV] = useState(0.5); 
 
-  // НОВІ СТАНИ для термів
   const [criteriaTerms, setCriteriaTerms] = useState(INITIAL_CRITERIA_TERMS);
   const [alternativeTerms, setAlternativeTerms] = useState(
     INITIAL_ALTERNATIVE_TERMS
@@ -694,7 +611,6 @@ function App() {
     null
   );
 
-  // Словники для швидкого пошуку (ТЕПЕР В useMemo)
   const CRITERIA_MAP = useMemo(
     () => new Map(criteriaTerms.map((t) => [t.shortName, t.tri])),
     [criteriaTerms]
@@ -704,75 +620,108 @@ function App() {
     [alternativeTerms]
   );
 
-  // Назви
   const [alternativeLabels, setAlternativeLabels] = useState(() =>
     resizeLabels(
-      ["A1", "A2", "A3", "A4", "A5"],
+      [
+        "Tesla Model Y",
+        "Volkswagen ID.4",
+        "Hyundai Ioniq 5",
+        "Kia EV6",
+        "Skoda Enyaq iV",
+        "Ford Mustang Mach-E",
+        "Nissan Ariya",
+        "Renault Megane E-Tech",
+      ],
       numAlternatives,
       "Альтернатива"
     )
   );
   const [criteriaLabels, setCriteriaLabels] = useState(() =>
-    resizeLabels(["C1", "C2", "C3", "C4"], numCriteria, "Критерій")
+    resizeLabels(
+      [
+        "Ціна",
+        "Запас ходу",
+        "Швидкість зарядки",
+        "Комфорт",
+        "Технологічність",
+        "Обслуговування",
+      ],
+      numCriteria,
+      "Критерій"
+    )
   );
   const [expertLabels, setExpertLabels] = useState(() =>
-    resizeLabels(["D1", "D2", "D3"], numExperts, "Експерт")
+    resizeLabels(
+      ["Журналіст", "Еко-експерт", "Інженер-механік", "Практичний юзер"],
+      numExperts,
+      "Експерт"
+    )
   );
 
-  // Тип критеріїв (true = Benefit, false = Cost) (з Рис. 1)
-  const [benefitCost, setBenefitCost] = useState(() =>
-    Array(numCriteria).fill(true)
-  );
-  // Встановлюємо з Рис. 1: C1(false), C2(true), C3(true), C4(false)
-  useEffect(() => {
-    setBenefitCost([false, true, true, false]);
-  }, []);
+  const [benefitCost, setBenefitCost] = useState(() => [
+    false, 
+    true, 
+    true, 
+    true, 
+    true, 
+    false, 
+  ]);
 
-  // Вхідні дані
   const [criteriaInputs, setCriteriaInputs] = useState(() =>
-    // З Рис. 1
-    transpose([
-      ["VL", "H", "L"],
-      ["VL", "M", "L"],
-      ["L", "VH", "M"],
-      ["VH", "VL", "VH"],
-    ])
+    [
+      ["M", "H", "H", "M", "VH", "L"],
+      ["M", "VH", "VH", "L", "H", "M"],
+      ["L", "H", "M", "M", "H", "VH"],
+      ["VH", "M", "L", "VH", "M", "H"],
+    ]
   );
-  // Допоміжна функція для "транспонування" (для зручності вводу)
-  // (ВИДАЛЕНО Array.prototype.transpose, оскільки це викликало помилку часу ініціалізації)
 
   const [alternativeInputs, setAlternativeInputs] = useState(() =>
-    // З Рис. 2
-    ([
+    [
       [
-        // D1
-        ["F", "P", "VG", "F", "E"],
-        ["P", "E", "VP", "E", "G"],
-        ["VG", "F", "VP", "VP", "G"],
-        ["P", "VG", "F", "E", "VG"],
+        ["P", "VG", "VG", "G", "E", "F"], 
+        ["G", "G", "F", "G", "F", "G"], 
+        ["F", "VG", "E", "G", "VG", "G"], 
+        ["F", "VG", "E", "G", "VG", "G"], 
+        ["G", "G", "F", "VG", "F", "G"], 
+        ["F", "G", "G", "F", "VG", "F"], 
+        ["G", "G", "G", "G", "F", "G"], 
+        ["VG", "P", "F", "F", "G", "VG"], 
       ],
       [
-        // D2
-        ["E", "VP", "VP", "VP", "E"],
-        ["VG", "VP", "E", "VG", "E"],
-        ["VG", "VP", "E", "G", "VG"],
-        ["P", "VP", "VP", "VG", "E"],
+        ["P", "E", "VG", "G", "E", "F"], 
+        ["G", "VG", "G", "G", "F", "G"], 
+        ["F", "VG", "E", "G", "VG", "G"], 
+        ["F", "VG", "E", "G", "VG", "G"], 
+        ["G", "VG", "F", "VG", "F", "G"], 
+        ["F", "G", "G", "F", "G", "F"], 
+        ["G", "VG", "G", "G", "F", "G"], 
+        ["VG", "P", "F", "F", "G", "VG"], 
       ],
       [
-        // D3
-        ["E", "F", "F", "F", "E"],
-        ["VG", "E", "F", "VG", "E"],
-        ["VP", "VP", "E", "F", "E"],
-        ["F", "VP", "G", "F", "VP"],
+        ["P", "VG", "VG", "G", "E", "P"], 
+        ["G", "G", "G", "G", "F", "VG"], 
+        ["F", "G", "VG", "G", "G", "G"], 
+        ["F", "G", "VG", "G", "G", "G"], 
+        ["G", "G", "F", "VG", "F", "VG"], 
+        ["F", "G", "G", "F", "G", "F"], 
+        ["G", "G", "G", "VG", "F", "VG"], 
+        ["VG", "P", "F", "F", "F", "G"], 
       ],
-      // Транспонуємо кожну матрицю, щоб було [alt][crit]
-    ] as string[][][]).map((expertMatrix) => transpose(expertMatrix))
+      [
+        ["P", "VG", "G", "VG", "G", "P"], 
+        ["G", "G", "F", "VG", "F", "G"], 
+        ["F", "G", "G", "G", "F", "G"], 
+        ["F", "G", "G", "G", "F", "G"], 
+        ["VG", "G", "F", "E", "F", "G"], 
+        ["F", "F", "F", "F", "F", "F"], 
+        ["G", "G", "G", "VG", "F", "G"], 
+        ["VG", "P", "F", "P", "F", "VG"], 
+      ],
+    ]
   );
 
-  // Результати
   const [results, setResults] = useState<CalculationResults | null>(null);
-
-  // --- Ефекти для "розумної" зміни розміру ---
 
   useEffect(() => {
     setAlternativeLabels((prev) =>
@@ -787,7 +736,7 @@ function App() {
         alternativeTerms[0]?.shortName || "F"
       )
     );
-  }, [numAlternatives, numExperts, numCriteria, alternativeTerms]); // Додано alternativeTerms
+  }, [numAlternatives, numExperts, numCriteria, alternativeTerms]); 
 
   useEffect(() => {
     setCriteriaLabels((prev) =>
@@ -815,7 +764,7 @@ function App() {
         alternativeTerms[0]?.shortName || "F"
       )
     );
-  }, [numCriteria, numExperts, numAlternatives, criteriaTerms, alternativeTerms]); // Додано terms
+  }, [numCriteria, numExperts, numAlternatives, criteriaTerms, alternativeTerms]); 
 
   useEffect(() => {
     setExpertLabels((prev) => resizeLabels(prev, numExperts, "Експерт"));
@@ -836,9 +785,7 @@ function App() {
         alternativeTerms[0]?.shortName || "F"
       )
     );
-  }, [numExperts, numAlternatives, numCriteria, criteriaTerms, alternativeTerms]); // Додано terms
-
-  // --- Обробники ---
+  }, [numExperts, numAlternatives, numCriteria, criteriaTerms, alternativeTerms]); 
 
   const handleBenefitCostChange = (critIndex: number) => {
     setBenefitCost((prev) =>
@@ -846,9 +793,6 @@ function App() {
     );
   };
 
-  /**
-   * Скидання вхідних матриць та назв
-   */
   const resetInputs = () => {
     setCriteriaInputs(
       create2DArray(
@@ -872,15 +816,12 @@ function App() {
     setExpertLabels(resizeLabels([], numExperts, "Експерт"));
   };
 
-  /**
-   * Оновлення кількості
-   */
   const handleCountChange =
     (setter: React.Dispatch<React.SetStateAction<number>>) =>
     (e: React.ChangeEvent<HTMLInputElement>) => {
       const strValue = e.target.value;
       if (strValue === "") {
-        setter(1); // Повертаємо до min, якщо поле очищене
+        setter(1); 
         return;
       }
       const value = parseInt(strValue, 10);
@@ -889,9 +830,6 @@ function App() {
       }
     };
 
-  /**
-   * Оновлення `v`
-   */
   const handleVChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const strValue = e.target.value;
     if (strValue === "") {
@@ -904,9 +842,6 @@ function App() {
     }
   };
 
-/**
- * Оновлення назв
- */
   const handleLabelChange =
     (
       setter: React.Dispatch<React.SetStateAction<string[]>>,
@@ -945,12 +880,8 @@ function App() {
     });
   };
 
-  // -----------------------------------------------------------------
-  // ГОЛОВНА ФУНКЦІЯ: Виконує всі обчислення Fuzzy VIKOR
-  // -----------------------------------------------------------------
   const calculate = () => {
     try {
-      // --- Крок 1: Вхідні дані (перетворення в трикутні) ---
       const criteriaTri: TriangularNumber[][] = criteriaInputs.map(
         (expertRow) =>
           expertRow.map((term) => CRITERIA_MAP.get(term) || T_ZERO)
@@ -962,8 +893,6 @@ function App() {
           )
         );
 
-      // --- Крок 2: Агрегація (min, avg, max) ---
-      // Агреговані ваги критеріїв
       const step2_criteria: TriangularNumber[] = [];
       for (let j = 0; j < numCriteria; j++) {
         const ls = criteriaTri.map((expert) => expert[j].l);
@@ -971,12 +900,11 @@ function App() {
         const us = criteriaTri.map((expert) => expert[j].u);
         step2_criteria.push({
           l: Math.min(...ls),
-          m: ms.reduce((a, b) => a + b, 0) / numExperts, // Arithmetic mean
+          m: ms.reduce((a, b) => a + b, 0) / numExperts, 
           u: Math.max(...us),
         });
       }
 
-      // Агреговані оцінки альтернатив
       const step2_alternatives: TriangularNumber[][] = create2DArray(
         numAlternatives,
         numCriteria,
@@ -989,13 +917,12 @@ function App() {
           const us = alternativeTri.map((expert) => expert[i][j].u);
           step2_alternatives[i][j] = {
             l: Math.min(...ls),
-            m: ms.reduce((a, b) => a + b, 0) / numExperts, // Arithmetic mean
+            m: ms.reduce((a, b) => a + b, 0) / numExperts, 
             u: Math.max(...us),
           };
         }
       }
 
-      // --- Крок 3: Визначення ідеальних (f*) та найгірших (f°) значень ---
       const step3_fStar: TriangularNumber[] = [];
       const step3_fNadir: TriangularNumber[] = [];
 
@@ -1013,17 +940,14 @@ function App() {
         });
 
         if (benefitCost[j]) {
-          // Benefit criterion (max)
           step3_fStar.push(f_max);
           step3_fNadir.push(f_min);
         } else {
-          // Cost criterion (min)
           step3_fStar.push(f_min);
           step3_fNadir.push(f_max);
         }
       }
 
-      // --- Крок 4: Обчислення нормованої нечіткої різниці (d_ij) ---
       const step4_normalizedDiff: TriangularNumber[][] = create2DArray(
         numAlternatives,
         numCriteria,
@@ -1040,11 +964,9 @@ function App() {
           let denominator: number;
 
           if (benefitCost[j]) {
-            // (f* - f_ij) / (u* - l°)
             numerator = triSubtract(f_j_star, f_ij);
             denominator = f_j_star.u - f_j_nadir.l;
           } else {
-            // (f_ij - f*) / (u° - l*)
             numerator = triSubtract(f_ij, f_j_star);
             denominator = f_j_nadir.u - f_j_star.l;
           }
@@ -1053,7 +975,6 @@ function App() {
         }
       }
 
-      // --- Крок 5: Обчислення S_i та R_i ---
       const step5_S: TriangularNumber[] = [];
       const step5_R: TriangularNumber[] = [];
 
@@ -1075,7 +996,6 @@ function App() {
         step5_R.push(R_i);
       }
 
-      // --- Крок 6: Обчислення Q_i ---
       const S_star_tri = step5_S.reduce(triMin, {
         l: Infinity,
         m: Infinity,
@@ -1116,12 +1036,10 @@ function App() {
         step6_Q.push(triAdd(term1, term2));
       }
 
-      // --- Крок 7: Дефазифікація ---
       const step7_S_defuzz = step5_S.map(defuzzify);
       const step7_R_defuzz = step5_R.map(defuzzify);
       const step7_Q_defuzz = step6_Q.map(defuzzify);
 
-      // --- Крок 8: Ранжування (в порядку ЗРОСТАННЯ) ---
       const rankedData = alternativeLabels.map((label, i) => ({
         altIndex: i,
         altLabel: label,
@@ -1131,10 +1049,9 @@ function App() {
       }));
 
       const step8_rankedS = [...rankedData].sort((a, b) => a.s - b.s);
-      const step8_rankedR = [...rankedData].sort((a, b) => a.r - b.r);
+      const step8_rankedR = [...rankedData].sort((a, b) => a.r - b.s);
       const step8_rankedQ = [...rankedData].sort((a, b) => a.q - b.q);
 
-      // --- Крок 9: Перевірка умов та компромісне рішення ---
       const A1 = step8_rankedQ[0];
       const A2 = step8_rankedQ[1];
       const m = numAlternatives;
@@ -1157,7 +1074,6 @@ function App() {
           .map((alt) => alt.altLabel);
       }
 
-      // Збереження результатів
       const finalResults: CalculationResults = {
         step2_criteria,
         step2_alternatives,
@@ -1185,11 +1101,8 @@ function App() {
       setPage("results");
     } catch (error) {
       console.error("Calculation failed:", error);
-      // Тут можна встановити стан помилки та показати користувачу
     }
   };
-
-  // --- Мемоїзовані компоненти UI ---
 
   const settingsPanel = useMemo(
     () => (
@@ -1279,7 +1192,7 @@ function App() {
         </Grid>
       </Paper>
     ),
-    [numAlternatives, numCriteria, numExperts, v, calculate] // Додано v
+    [numAlternatives, numCriteria, numExperts, v, calculate] 
   );
 
   const criteriaInputTable = useMemo(
@@ -1344,7 +1257,6 @@ function App() {
                   </TableCell>
                 ))}
               </TableRow>
-              {/* НОВИЙ РЯДОК: Benefit/Cost */}
               <TableRow>
                 <TableCell>
                   Тип критерію
@@ -1379,7 +1291,7 @@ function App() {
                   {criteriaLabels.map((_, cIdx) => (
                     <TableCell key={cIdx} align="center">
                       <Select
-                        value={criteriaInputs[eIdx]?.[cIdx] || "M"}
+                        value={criteriaInputs[eIdx]?.[cIdx] || criteriaTerms[0].shortName}
                         onChange={(e) =>
                           handleCriteriaChange(eIdx, cIdx, e.target.value)
                         }
@@ -1412,7 +1324,7 @@ function App() {
       criteriaLabels,
       expertLabels,
       benefitCost,
-      criteriaTerms, // Додано
+      criteriaTerms, 
     ]
   );
 
@@ -1494,7 +1406,7 @@ function App() {
                         <TableCell key={cIdx} align="center">
                           <Select
                             value={
-                              alternativeInputs[eIdx]?.[aIdx]?.[cIdx] || "F"
+                              alternativeInputs[eIdx]?.[aIdx]?.[cIdx] || alternativeTerms[0].shortName
                             }
                             onChange={(e) =>
                               handleAlternativeChange(
@@ -1536,11 +1448,9 @@ function App() {
       alternativeLabels,
       expertLabels,
       criteriaLabels,
-      alternativeTerms, // Додано
+      alternativeTerms, 
     ]
   );
-
-  // --- Рендеринг ---
 
   return (
     <ThemeProvider theme={theme}>
@@ -1600,7 +1510,7 @@ function App() {
                   </Typography>
                   <IconButton
                     onClick={() => setResultPage((p) => p + 1)}
-                    disabled={resultPage === 7} // 8 вкладок, індекси 0-7
+                    disabled={resultPage === 7} 
                   >
                     <ArrowForwardIosIcon />
                   </IconButton>
@@ -1623,7 +1533,6 @@ function App() {
               </Tabs>
             </AppBar>
 
-            {/* Крок 2: Агрегація */}
             <CustomTabPanel value={resultPage} index={0}>
               <Typography variant="h6" gutterBottom>
                 Агреговані ваги критеріїв
@@ -1682,7 +1591,6 @@ function App() {
               </TableContainer>
             </CustomTabPanel>
 
-            {/* Крок 3: Ідеал / Найгірше */}
             <CustomTabPanel value={resultPage} index={1}>
               <Typography variant="h6" gutterBottom>
                 Ідеальні (f*) та найгірші (f°) значення
@@ -1709,7 +1617,6 @@ function App() {
               </TableContainer>
             </CustomTabPanel>
 
-            {/* Крок 4: Нормована різниця */}
             <CustomTabPanel value={resultPage} index={2}>
               <Typography variant="h6" gutterBottom>
                 Нормована нечітка різниця d
@@ -1743,7 +1650,6 @@ function App() {
               </TableContainer>
             </CustomTabPanel>
 
-            {/* Крок 5: S, R (Fuzzy) */}
             <CustomTabPanel value={resultPage} index={3}>
               <Typography variant="h6" gutterBottom>
                 Нечіткі S та R
@@ -1770,7 +1676,6 @@ function App() {
               </TableContainer>
             </CustomTabPanel>
 
-            {/* Крок 6: Q (Fuzzy) */}
             <CustomTabPanel value={resultPage} index={4}>
               <Typography variant="h6" gutterBottom>
                 {`Нечіткий показник Q (v=${v})`}
@@ -1795,7 +1700,6 @@ function App() {
               </TableContainer>
             </CustomTabPanel>
 
-            {/* Крок 7: S, R, Q (Чіткі) */}
             <CustomTabPanel value={resultPage} index={5}>
               <Typography variant="h6" gutterBottom>
                 Дефазифіковані значення S, R, Q
@@ -1830,13 +1734,11 @@ function App() {
               </TableContainer>
             </CustomTabPanel>
 
-            {/* Крок 8: Ранжування */}
             <CustomTabPanel value={resultPage} index={6}>
               <Typography variant="h6" gutterBottom>
                 Ранжування за S, R, Q (в порядку зростання)
               </Typography>
               <Grid container spacing={2}>
-                {/* Ранг S */}
                 <Grid>
                   <Typography variant="subtitle1" align="center">
                     Ранжування за S
@@ -1862,7 +1764,6 @@ function App() {
                     </Table>
                   </TableContainer>
                 </Grid>
-                {/* Ранг R */}
                 <Grid>
                   <Typography variant="subtitle1" align="center">
                     Ранжування за R
@@ -1888,7 +1789,6 @@ function App() {
                     </Table>
                   </TableContainer>
                 </Grid>
-                {/* Ранг Q */}
                 <Grid>
                   <Typography variant="subtitle1" align="center">
                     Ранжування за Q (Головне)
@@ -1923,7 +1823,6 @@ function App() {
               </Grid>
             </CustomTabPanel>
 
-            {/* Крок 9: Результат */}
             <CustomTabPanel value={resultPage} index={7}>
               <Typography variant="h6" gutterBottom>
                 Компромісне рішення
@@ -1991,7 +1890,6 @@ function App() {
         )}
       </Container>
       
-      {/* --- Модальне вікно --- */}
       <LinguisticTermEditor
         open={modalOpen !== null}
         onClose={() => setModalOpen(null)}
